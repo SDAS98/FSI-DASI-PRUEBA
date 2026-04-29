@@ -1,15 +1,20 @@
-from fastapi import FastAPI, Request
+'''from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from .modulos.config import settings
-from .modulos.server_api import post_name
-from .modulos.agent_logic import procesar_mensaje
-from .modulos.agent_loop import monitor_loop
+from loguru import logger
+import httpx
 import asyncio
+import json
+import time
+
+from modulos.config import settings
+from modulos.server_api import post_name, get_game_state
+from modulos.agent_logic import procesar_mensaje
+from modulos.agent_loop import monitor_loop
 
 app = FastAPI()
 
 # Configuración actualizada
-SERVER_URL = "http://147.96.80.224:7719/"  # IP Butler
+SERVER_URL = "http://http://127.0.0.1:7719/"  # IP Butler
 OLLAMA_URL = "http://localhost:11434/api/chat"
 DEFAULT_MODEL = "ministral-3:8B"
 MI_ALIAS = "bunnydos"
@@ -130,4 +135,71 @@ async def startup():
 if __name__ == "__main__":
     import uvicorn
     # Importante: No bloqueamos con hilos, dejamos que FastAPI gestione el loop
-    uvicorn.run(app, host="0.0.0.0", port=7720)
+    uvicorn.run(app, host="0.0.0.0", port=7720) '''
+
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+from loguru import logger
+import httpx
+import asyncio
+import json
+import time
+
+# IMPORTACIONES DESDE TUS MÓDULOS (Sin puntos para ejecución directa)
+from modulos.config import settings
+from modulos.server_api import post_name, get_game_state
+from modulos.agent_logic import procesar_mensaje
+from modulos.agent_loop import monitor_loop
+
+app = FastAPI(title=f"Agente {settings.MI_ALIAS}")
+
+class Mensaje(BaseModel):
+    msg: str
+
+# --- RUTAS ---
+
+@app.get("/")
+async def root():
+    return {"agente": settings.MI_ALIAS, "status": "online"}
+
+@app.post("/buzon")
+async def buzon(request: Request, mensaje: Mensaje):
+    """
+    Recibe un mensaje de un rival, lo procesa con la IA y devuelve la decisión.
+    """
+    client_ip = request.client.host
+    logger.info(f"Mensaje recibido de {client_ip}: {mensaje.msg}")
+
+    # Delegamos el pensamiento y la respuesta a agent_logic.py
+    # agent_logic se encarga de: pedir estado, preguntar a Ollama, guardar memoria y responder
+    try:
+        decision = await procesar_mensaje(client_ip, mensaje.msg)
+        return {"status": "procesado", "decision": decision}
+    except Exception as e:
+        logger.error(f"Error procesando mensaje: {e}")
+        return {"status": "error", "detalle": str(e)}
+
+# --- CICLO DE VIDA ---
+
+@app.on_event("startup")
+async def startup():
+    """
+    Se ejecuta al arrancar el agente.
+    """
+    logger.info(f"Arrancando agente {settings.MI_ALIAS}...")
+    
+    # 1. Registro en el Butler (usando la función de server_api)
+    await post_name()
+    
+    # 2. Lanzar el monitor autónomo en segundo plano (de agent_loop)
+    # Este se encarga de buscar gente y enviar pings cada X segundos
+    asyncio.create_task(monitor_loop())
+    
+    logger.success("Agente listo y monitor activado.")
+
+# --- EJECUCIÓN ---
+
+if __name__ == "__main__":
+    import uvicorn
+    # Lanzamos el servidor en el puerto 7720
+    uvicorn.run(app, host="0.0.0.0", port=settings.MI_PUERTO)

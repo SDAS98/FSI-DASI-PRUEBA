@@ -1,23 +1,29 @@
 import httpx
 from .config import settings
 
-async def get_game_state():
-    """Obtiene recursos y objetivos en una sola llamada asíncrona."""
+async def post_name():
+    """Registra tu alias en el Butler."""
     async with httpx.AsyncClient() as client:
-        r = await client.get(f"{settings.SERVER_URL}info")
-        info = r.json()
-        return {
-            "recursos": info.get("Recursos", {}),
-            "objetivo": info.get("Objetivo", "")
-        }
+        try:
+            url = f"{settings.SERVER_URL}alias/{settings.MI_ALIAS}"
+            await client.post(url)
+        except Exception as e:
+            print(f"Error al registrar nombre: {e}")
 
 async def get_gente():
-    """Obtiene la lista de agentes (IPs) registrados."""
+    """Obtiene la lista de agentes conectados {alias: ip}."""
     async with httpx.AsyncClient() as client:
-        r = await client.get(f"{settings.SERVER_URL}gente")
-        return {p["alias"]: p["ip"] for p in r.json() if p["alias"] != "bunny"}
+        try:
+            r = await client.get(f"{settings.SERVER_URL}gente")
+            return r.json() if r.status_code == 200 else {}
+        except:
+            return {}
 
-async def post_name(alias="bunnydos"):
-    """Registra el alias del agente en el Butler."""
+async def get_game_state():
+    """Obtiene recursos y objetivos del juego."""
     async with httpx.AsyncClient() as client:
-        await client.post(f"{settings.SERVER_URL}alias/{alias}")
+        try:
+            r = await client.get(f"{settings.SERVER_URL}info")
+            return r.json()
+        except:
+            return {}

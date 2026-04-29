@@ -53,7 +53,7 @@ async def buzon(request: Request, mensaje: Mensaje):
 
 async def enviar_ping(ip, msg):
     """Envía un mensaje proactivo a otro agente."""
-    url = f"http://{ip}:7720/buzon"
+    url = f"http://{ip}:7719/buzon"
     async with httpx.AsyncClient() as client:
         try:
             r = await client.post(url, json=msg, timeout=5)
@@ -84,4 +84,4 @@ async def startup():
 if __name__ == "__main__":
     import uvicorn
     # Ejecución del servidor en el puerto 7720
-    uvicorn.run(app, host="0.0.0.0", port=7720)
+    uvicorn.run(app, host="0.0.0.0", port=7719)
