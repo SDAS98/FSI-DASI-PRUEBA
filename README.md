@@ -9,17 +9,26 @@ pip install -r requirements.txt
 ollama run ministral-3:8B
 
 ### 3. Lanzar el sistema
-python run.py
+python3 main.py
 
 ---
 
 ## 🧱 Arquitectura
 
-- app/
-  - models/ → estructuras de datos
-  - routes/ → endpoints FastAPI
-  - services/ → lógica del agente
-- config.py → configuración centralizada
+FDI_DASI/
+├── pyproject.toml       <---
+├── requirements.txt     <--- Dependencias (fastapi, uvicorn, httpx, loguru)
+├── main.py              <--- Punto de entrada
+├── README.md            <--- Detalles del codigo
+├── comando              <--- Instrucciones
+└── modulos/             # Carpeta de lógica
+    ├── __init__.py      <--- Puede estar vacio
+    ├── agent_logic.py   <--- Lógica con Ollama y Tools
+    ├── agent_loop.py    <--- Bucle asíncrono de monitoreo
+    ├── agent_memory.py  <--- lógica del agente (el historial de decisiones)
+    ├── config.py        <--- IPs y tiempos (Butler: 147.96.80.224)
+    ├── server_api.py    <--- Comunicación con el Butler
+    └── tools.py         <--- defines la lógica determinista (por ejemplo, comprobar si tienes suficiente recursos para aceptar un trato)
 
 ---
 
