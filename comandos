@@ -25,6 +25,9 @@
   1. Descargar Ollama
     wget https://ollama.com/download/ollama-linux-amd64.tar.zst
   2. Ejecutar el servidor de Ollama
+    tar -I zstd -xf ollama-linux-amd64.tar.zst
+    /bin/ollama serve &
+    Couldn't find '/home/hlocal/.ollama/id_ed25519'. Generating new private key.
     bin/ollama serve
   3. Descargar modelo
     bin/ollama pull ministral-3:8B
