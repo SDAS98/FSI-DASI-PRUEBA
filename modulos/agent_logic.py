@@ -3,6 +3,8 @@ import json
 from loguru import logger
 from .config import settings
 from .server_api import get_game_state
+from .agent_memory import registrar, perfil_rival
+from .tools import evaluar_oferta
 
 # Definición de Tool según notas: "no responde en JSON, es un tool-call"
 TOOLS = [{
