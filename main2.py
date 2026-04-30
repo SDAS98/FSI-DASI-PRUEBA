@@ -7,10 +7,10 @@ import json
 import time
 
 # Importaciones de tus módulos locales
-from .modulos.config import settings
-from .modulos.server_api import post_name, get_game_state
-from .modulos.agent_logic import procesar_mensaje
-from .modulos.agent_loop import monitor_loop
+from modulos.config import settings
+from modulos.server_api import post_name, get_game_state
+from modulos.agent_logic import procesar_mensaje
+from modulos.agent_loop import monitor_loop
 
 app = FastAPI(title="Agente FDI-DASI Bunnydos")
 
@@ -72,7 +72,7 @@ async def startup():
     
     # 1. Registrar nombre en el Butler (147.96.80.224)
     try:
-        await post_name("bunnydos")
+        await post_name()
         logger.success("Registro inicial completado")
     except Exception as e:
         logger.error(f"No se pudo registrar el alias: {e}")
