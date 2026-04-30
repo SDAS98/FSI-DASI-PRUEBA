@@ -14,6 +14,13 @@
   7. Logout
     gh auth logout
 
+Butler local:
+  Descargar
+  uv tool install fdi_pln_butler-26.2.23-py3-none-any.whl
+  fdi-pln-butler --help
+  fdi_pln_butler
+  fdi-pln-butler server
+  Navegador: http://127.0.0.1:7719/dashboard
 
 -uv
   1. Crear proyecto
@@ -26,7 +33,7 @@
     wget https://ollama.com/download/ollama-linux-amd64.tar.zst
   2. Ejecutar el servidor de Ollama
     tar -I zstd -xf ollama-linux-amd64.tar.zst
-    /bin/ollama serve &
+    bin/ollama serve &
     Couldn't find '/home/hlocal/.ollama/id_ed25519'. Generating new private key.
     bin/ollama serve
   3. Descargar modelo
