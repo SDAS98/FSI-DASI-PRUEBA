@@ -163,21 +163,27 @@ async def root():
     return {"agente": settings.MI_ALIAS, "status": "online"}
 
 @app.post("/buzon")
-async def buzon(request: Request, mensaje: Mensaje):
-    """
-    Recibe un mensaje de un rival, lo procesa con la IA y devuelve la decisión.
-    """
+async def buzon(request: Request):
     client_ip = request.client.host
-    logger.info(f"Mensaje recibido de {client_ip}: {mensaje.msg}")
-
-    # Delegamos el pensamiento y la respuesta a agent_logic.py
-    # agent_logic se encarga de: pedir estado, preguntar a Ollama, guardar memoria y responder
+    
     try:
-        decision = await procesar_mensaje(client_ip, mensaje.msg)
+        # 1. Intentamos leer el cuerpo de la petición como JSON
+        data = await request.json()
+        
+        # 2. Buscamos el mensaje en diferentes campos posibles (msg, mensaje, content...)
+        # Esto hace que tu agente sea más inteligente y no falle por una palabra
+        mensaje_texto = data.get("msg") or data.get("mensaje") or data.get("text") or str(data)
+        
+        logger.info(f"Mensaje recibido de {client_ip}: {mensaje_texto}")
+
+        # 3. Procesamos con tu lógica habitual
+        decision = await procesar_mensaje(client_ip, mensaje_texto)
         return {"status": "procesado", "decision": decision}
+
     except Exception as e:
-        logger.error(f"Error procesando mensaje: {e}")
-        return {"status": "error", "detalle": str(e)}
+        # Si ni siquiera es un JSON válido, capturamos el error
+        logger.error(f"Error al decodificar petición de {client_ip}: {e}")
+        return {"status": "error", "detalle": "Formato no soportado"}
 
 # --- CICLO DE VIDA ---
 

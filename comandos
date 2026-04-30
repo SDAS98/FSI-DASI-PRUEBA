@@ -20,7 +20,9 @@ Butler local:
   fdi-pln-butler --help
   fdi_pln_butler
   fdi-pln-butler server
+  fdi-pln-butler server --host 0.0.0.0 --port 7719
   Navegador: http://127.0.0.1:7719/dashboard
+  ip's: 172.16.82.22 147.96.82.22 192.168.207.1 172.16.125.1 
 
 -uv
   1. Crear proyecto
