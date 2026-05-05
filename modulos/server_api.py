@@ -15,9 +15,9 @@ async def get_gente():
     async with httpx.AsyncClient() as client:
         try:
             r = await client.get(f"{settings.SERVER_URL}gente")
-            return r.json() if r.status_code == 200 else {}
+            return r.json() if r.status_code == 200 else []
         except:
-            return {}
+            return []
 
 async def get_game_state():
     """Obtiene recursos y objetivos del juego."""
@@ -26,4 +26,24 @@ async def get_game_state():
             r = await client.get(f"{settings.SERVER_URL}info")
             return r.json()
         except:
-            return {}
+            return {"recursos": {}, "objetivo": {}}
+
+async def ejecutar_intercambio(id_rival, recurso_dar, cant_dar, recurso_recibir, cant_recibir):
+    """
+    NOTIFICACIÓN AL BUTLER: Esta función hace que el intercambio sea oficial.
+    """
+    async with httpx.AsyncClient() as client:
+        try:
+            payload = {
+                "emisor": settings.MI_ALIAS,
+                "receptor": id_rival,
+                "dar": {recurso_dar: cant_dar},
+                "recibir": {recurso_recibir: cant_recibir}
+            }
+            # Cambiar '/intercambiar' por el endpoint exacto que use tu servidor
+            url = f"{settings.SERVER_URL}intercambiar"
+            r = await client.post(url, json=payload, timeout=10)
+            return r.status_code == 200
+        except Exception as e:
+            print(f"Error registrando intercambio en el servidor: {e}")
+            return False
