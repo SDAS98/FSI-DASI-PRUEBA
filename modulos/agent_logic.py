@@ -30,14 +30,14 @@ async def procesar_mensaje(ip, msg):
     """
     Lógica principal: Consulta estado, pregunta a la IA y ejecuta el intercambio.
     """
-    game = await get_game_state()
-    historia_rival = perfil_rival(ip)
+    game = await get_game_state() # Obtenemos recursos y objetivos reales del servidor
+    historia_rival = perfil_rival(ip) # Analizamos el perfil del rival según el historial de interacciones
     
     logger.info(f"Procesando mensaje de {ip}. Perfil: {historia_rival}")
 
     async with httpx.AsyncClient() as client:
         try:
-            # 1. Llamada a la IA
+            # 1. Llamada a la IA con lógica de paridad y límite de 2
             payload = {
                 "model": settings.DEFAULT_MODEL,
                 "messages": [
@@ -48,6 +48,10 @@ async def procesar_mensaje(ip, msg):
                             f"Tus recursos actuales: {game.get('recursos')}. "
                             f"Tu objetivo final: {game.get('objetivo')}. "
                             f"Historial del rival (IP {ip}): {historia_rival}. "
+                            "REGLAS CRÍTICAS DE NEGOCIACIÓN:"
+                            "1. PARIDAD: Debes dar la misma cantidad de recursos que pides (ej: 1x1 o 2x2)."
+                            "2. LÍMITE MÁXIMO: No puedes intercambiar más de 2 unidades por bando."
+                            "3. Si te piden 1 recurso, responde ofreciendo 1. Si te piden 2, ofrece 2."
                             "Responde siempre usando la función evaluar_oferta."
                         )
                     },
@@ -56,16 +60,33 @@ async def procesar_mensaje(ip, msg):
                 "tools": TOOLS,
                 "stream": False
             }
-
+            
+            # Llamada a la IA local (Ollama) Limite de recursos a enviar 2 (1x1 o 2x2)
             r = await client.post(settings.OLLAMA_URL, json=payload, timeout=30)
             response_data = r.json()
             tool_calls = response_data.get("message", {}).get("tool_calls", [])
-
+            
+            # Decisión de la IA (si la hay)
             if tool_calls:
                 decision = json.loads(tool_calls[0]["function"]["arguments"])
+                
+                # VALIDACIÓN DE SEGURIDAD: Paridad y Límite de 2
+                cant_dar = decision.get("cantidad_dar", 0)
+                cant_pedir = decision.get("cantidad_pedir", 0)
+
+                # Regla: No más de 2 unidades en total por bando
+                if cant_dar > 2 or cant_pedir > 2:
+                    logger.warning(f"IA intentó exceder límite (Dar: {cant_dar}, Pedir: {cant_pedir}). Forzando rechazo.")
+                    decision = {"accion": "rechazar", "motivo": "No se permiten más de 2 unidades por intercambio"}
+                
+                # Regla: Cantidad simétrica (Paridad de recursos)
+                elif cant_dar != cant_pedir and decision["accion"] == "aceptar":
+                    logger.warning(f"IA intentó intercambio asimétrico ({cant_dar} vs {cant_pedir}). Forzando rechazo.")
+                    decision = {"accion": "rechazar", "motivo": "Solo acepto intercambios simétricos (misma cantidad)"}
             else:
                 decision = {"accion": "rechazar", "motivo": "No se entendió la propuesta"}
-
+                
+            # --- ACCIÓN DE INTERCAMBIO ---
             # 2. Si la IA acepta, intentamos el intercambio real en el servidor
             if decision["accion"] == "aceptar":
                 exito = await ejecutar_intercambio(
@@ -83,11 +104,20 @@ async def procesar_mensaje(ip, msg):
             
             # Intentar avisar al rival (P2P)
             try:
-                # Se envía la decisión al puerto del agente rival
-                url_rival = f"http://{ip}:{settings.MI_PUERTO}/buzon"
-                await client.post(url_rival, json={"from": settings.MI_ALIAS, "decision": decision}, timeout=5)
-            except:
-                logger.warning(f"No se pudo avisar a la IP {ip} por su buzón, pero se intentó el registro.")
+                # Solo intentamos responder si la IP no es la nuestra (localhost)
+                if ip != "127.0.0.1":
+                    url_rival = f"http://{ip}:{settings.MI_PUERTO}/buzon"
+                    # Enviamos mensaje formal identificándonos como FH
+                    respuesta_formal = {
+                        "from": settings.MI_ALIAS,
+                        "msg": f"Hola, soy {settings.MI_ALIAS}. Mi decisión es: {decision['accion']}. {decision.get('motivo', '')}",
+                        "decision": decision
+                    }
+                    await client.post(url_rival, json=respuesta_formal, timeout=5)
+                else:
+                    logger.info("Prueba manual detectada: No se envía respuesta al buzón propio.")
+            except Exception as e:
+                logger.warning(f"No se pudo avisar a la IP {ip} por su buzón: {e}")
 
             return decision
 

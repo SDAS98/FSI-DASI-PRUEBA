@@ -20,11 +20,11 @@ async def get_gente():
             return []
 
 async def get_game_state():
-    """Obtiene recursos y objetivos del juego."""
+    """Consulta al Butler qué recursos tenemos y cuál es nuestro objetivo actual"""
     async with httpx.AsyncClient() as client:
         try:
             r = await client.get(f"{settings.SERVER_URL}info")
-            return r.json()
+            return r.json() # Devuelve un dict: {"recursos": {...}, "objetivo": {...}}
         except:
             return {"recursos": {}, "objetivo": {}}
 
@@ -40,7 +40,7 @@ async def ejecutar_intercambio(id_rival, recurso_dar, cant_dar, recurso_recibir,
                 "dar": {recurso_dar: cant_dar},
                 "recibir": {recurso_recibir: cant_recibir}
             }
-            # Cambiar '/intercambiar' por el endpoint exacto que use tu servidor
+            # /trade /confirmar en caso de que intercambiarno sea el endpoint exacto que se use
             url = f"{settings.SERVER_URL}intercambiar"
             r = await client.post(url, json=payload, timeout=10)
             return r.status_code == 200
