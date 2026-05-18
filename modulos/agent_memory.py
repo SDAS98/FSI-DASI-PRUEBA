@@ -1,6 +1,5 @@
 from loguru import logger
 
-# Diccionario para guardar qué hemos negociado con cada IP
 historial = {}
 
 def registrar(ip, decision):
@@ -15,7 +14,5 @@ def perfil_rival(ip):
     interacciones = historial.get(ip, [])
     if not interacciones:
         return "desconocido"
-    
-    # Ejemplo: Si ha aceptado más del 50% de veces
     aceptados = sum(1 for i in interacciones if i.get("accion") == "aceptar")
     return "flexible" if aceptados > len(interacciones) / 2 else "agresivo"
