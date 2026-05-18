@@ -1,142 +1,4 @@
-'''from fastapi import FastAPI, Request
-from pydantic import BaseModel
-from loguru import logger
-import httpx
-import asyncio
-import json
-import time
-
-from modulos.config import settings
-from modulos.server_api import post_name, get_game_state
-from modulos.agent_logic import procesar_mensaje
-from modulos.agent_loop import monitor_loop
-
-app = FastAPI()
-
-# Configuración actualizada
-SERVER_URL = "http://http://127.0.0.1:7719/"  # IP Butler
-OLLAMA_URL = "http://localhost:11434/api/chat"
-DEFAULT_MODEL = "ministral-3:8B"
-MI_ALIAS = "bunnydos"
-
-# Estado del sistema
-ip_time = {}
-list_ping = set()
-sleep_time = 30
-ping_time = 60
-
-class Mensaje(BaseModel):
-    msg: str
-
-# --- UTILIDADES DEL SERVIDOR (BUTLER) ---
-
-async def get_butler_data(endpoint: str):
-    """Función asíncrona genérica para consultar al Butler."""
-    async with httpx.AsyncClient() as client:
-        try:
-            r = await client.get(f"{SERVER_URL}{endpoint}", timeout=5)
-            return r.json()
-        except Exception as e:
-            logger.error(f"Error Butler ({endpoint}): {e}")
-            return {}
-
-async def post_name():
-    """Registra el alias si no existe."""
-    gente = await get_butler_data("gente")
-    if not any(p["alias"] == MI_ALIAS for p in gente):
-        async with httpx.AsyncClient() as client:
-            await client.post(f"{SERVER_URL}alias/{MI_ALIAS}")
-            logger.success(f"Alias {MI_ALIAS} registrado")
-
-# --- LÓGICA DE NEGOCIACIÓN ---
-
-@app.post("/buzon")
-async def buzon(request: Request, mensaje: Mensaje):
-    client_ip = request.client.host
-    logger.info(f"Mensaje de {client_ip}: {mensaje.msg}")
-
-    # 1. Obtener estado unificado (Optimizado)
-    info = await get_butler_data("info")
-    mis_recursos = info.get("Recursos", {})
-    objetivo = info.get("Objetivo", {})
-
-    # 2. IA decide (Delegamos la lógica de 'beneficio' al modelo)
-    # En lugar de scores manuales, le damos el objetivo a Ollama
-    async with httpx.AsyncClient() as client:
-        r = await client.post(OLLAMA_URL, json={
-            "model": DEFAULT_MODEL,
-            "messages": [
-                {
-                    "role": "system", 
-                    "content": f"Eres un agente de Catan. Tus recursos: {mis_recursos}. Objetivo: {objetivo}. "
-                               f"Responde SOLO en JSON: {{\"accion\": \"aceptar\"|\"contraoferta\"|\"rechazar\", \"dar\": str, \"pido\": str}}"
-                },
-                {"role": "user", "content": mensaje.msg}
-            ],
-            "stream": False
-        })
-        
-        contenido = r.json().get('message', {}).get('content', '')
-        try:
-            decision = json.loads(contenido)
-        except:
-            decision = {"accion": "rechazar", "motivo": "error de formato"}
-
-    # 3. Responder al rival
-    ip_time[client_ip] = time.time()
-    asyncio.create_task(enviar_ping(client_ip, {"msg": json.dumps(decision)}))
-
-    return {"status": "procesado", "decision": decision}
-
-# --- MONITOR Y REACTIVIDAD ---
-
-async def enviar_ping(ip, msg):
-    """Versión asíncrona del envío de mensajes."""
-    url = f"http://{ip}:7720/buzon"
-    async with httpx.AsyncClient() as client:
-        try:
-            r = await client.post(url, json=msg, timeout=5)
-            if r.status_code == 200:
-                ip_time[ip] = time.time()
-                list_ping.discard(ip)
-                return r.json()
-        except:
-            pass
-    return None
-
-async def monitor_loop():
-    """Tarea autónoma que gestiona la red."""
-    while True:
-        try:
-            # Actualizar lista de gente
-            gente_data = await get_butler_data("gente")
-            actuales = {p["ip"] for p in gente_data if p["alias"] != MI_ALIAS}
-            
-            now = time.time()
-            for ip in actuales:
-                # Si es nueva o ha pasado el ping_time, reactivar
-                if ip not in ip_time or (now - ip_time[ip] > ping_time):
-                    logger.warning(f"Reactivando comunicación con {ip}")
-                    await enviar_ping(ip, {"msg": "Hola, ¿tienes algún intercambio beneficioso?"})
-            
-        except Exception as e:
-            logger.error(f"Error en monitor: {e}")
-            
-        await asyncio.sleep(sleep_time)
-
-# --- INICIO ---
-
-@app.on_event("startup")
-async def startup():
-    await post_name()
-    # Iniciamos el monitor como tarea de fondo asíncrona
-    asyncio.create_task(monitor_loop())
-
-if __name__ == "__main__":
-    import uvicorn
-    # Importante: No bloqueamos con hilos, dejamos que FastAPI gestione el loop
-    uvicorn.run(app, host="0.0.0.0", port=7720) '''
-
+'''
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from loguru import logger
@@ -163,7 +25,7 @@ async def root():
     return {"agente": settings.MI_ALIAS, "status": "online"}
 
 @app.post("/buzon")
-async def buzon(request: Request):
+async def buzon(request: Mensaje):
     client_ip = request.client.host
     
     try:
@@ -209,3 +71,72 @@ if __name__ == "__main__":
     import uvicorn
     # Lanzamos el servidor en el puerto 7720
     uvicorn.run(app, host="0.0.0.0", port=settings.MI_PUERTO)
+    '''
+import uvicorn
+import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request, BackgroundTasks
+from pydantic import BaseModel
+from loguru import logger
+
+# Importaciones de tus módulos locales
+from modulos.config import settings
+from modulos.server_api import post_name
+from modulos.agent_loop import monitor_loop
+from modulos.agent_logic import procesar_mensaje
+
+# 1. Definición del ciclo de vida (Lifespan) - Reemplaza a on_event("startup")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- CÓDIGO AL ARRANCAR ---
+    logger.info(f"Arrancando agente {settings.MI_ALIAS}...")
+    
+    # Registro inicial en el Butler
+    try:
+        await post_name()
+        logger.success(f"Registro exitoso en el servidor como {settings.MI_ALIAS}")
+    except Exception as e:
+        logger.error(f"Error de registro: {e}")
+
+    # Lanzar el monitor proactivo en segundo plano
+    monitor_task = asyncio.create_task(monitor_loop())
+    logger.info("Monitor de agentes activos iniciado.")
+    
+    yield  # Aquí es donde el servidor se queda "corriendo"
+    
+    # --- CÓDIGO AL CERRAR ---
+    logger.info("Cerrando agente y cancelando tareas...")
+    monitor_task.cancel()
+
+# 2. Inicialización de FastAPI con Lifespan
+app = FastAPI(
+    title=f"Agente FH",
+    lifespan=lifespan
+)
+
+# 3. Modelo de datos para el buzón
+class Mensaje(BaseModel):
+    msg: str
+
+# 4. Endpoint del Buzón (Puerto 7720)
+@app.post("/buzon")
+async def buzon(mensaje: Mensaje, request: Request, background_tasks: BackgroundTasks):
+    ip_origen = request.client.host
+    logger.info(f"Mensaje recibido de {ip_origen}: {mensaje.msg}")
+
+    # Procesamos la IA en segundo plano para responder rápido al POST
+    background_tasks.add_task(procesar_mensaje, ip_origen, mensaje.msg)
+
+    return {
+        "status": "Mensaje entregado",
+        "remitente": settings.MI_ALIAS
+    }
+
+# 5. Ejecución
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app", 
+        host="0.0.0.0", 
+        port=settings.MI_PUERTO, 
+        reload=False
+    )

@@ -12,7 +12,7 @@ TOOLS = [{
     "type": "function",
     "function": {
         "name": "evaluar_oferta",
-        "description": "Decide si un intercambio de recursos en Catan es beneficioso.",
+        "description": "Decide si un intercambio de recursos beneficioso.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -94,10 +94,12 @@ async def procesar_mensaje(ip, msg):
                     "from": settings.MI_ALIAS,
                     "decision": decision
                 }
-                # Usamos el puerto configurado en settings para mayor flexibilidad
-                await client.post(f"http://{ip}:{settings.MI_PUERTO}/buzon", json=respuesta_rival, timeout=5)
+                # Reducimos el timeout a 2 segundos para no bloquear tu agente
+                await client.post(f"http://{ip}:7720/buzon", json=respuesta_rival, timeout=2.0)
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                logger.warning(f"Rival {ip} inalcanzable. Es posible que tenga el firewall activo.")
             except Exception as e:
-                logger.error(f"No se pudo enviar respuesta a {ip}: {e}")
+                logger.error(f"Error inesperado al responder a {ip}: {e}")
 
             return decision
 

@@ -1,4 +1,4 @@
-# 🧠 Sistema Multiagente de Negociación (Catan)
+# 🧠 Sistema Multiagente de Negociación de Recursos
 
 ## 🚀 Ejecución
 
@@ -10,19 +10,20 @@ ollama run ministral-3:8B
 
 ### 3. Lanzar el sistema
 python3 main.py
+uv run main.py
 
 ---
 
 ## 🧱 Arquitectura
 
 FDI_DASI/
-├── pyproject.toml       <---
-├── requirements.txt     <--- Dependencias (fastapi, uvicorn, httpx, loguru)
+├── pyproject.toml       <--- Define dependencias
+├── requirements.txt     <--- Lista de Dependencias (fastapi, uvicorn, httpx, loguru)
 ├── main.py              <--- Punto de entrada
 ├── README.md            <--- Detalles del codigo
 ├── comando              <--- Instrucciones
 └── modulos/             # Carpeta de lógica
-    ├── __init__.py      <--- Puede estar vacio
+    ├── __init__.py      <--- Inicializador del paquete. Puede estar vacio
     ├── agent_logic.py   <--- Lógica con Ollama y Tools
     ├── agent_loop.py    <--- Bucle asíncrono de monitoreo
     ├── agent_memory.py  <--- lógica del agente (el historial de decisiones)
@@ -34,7 +35,7 @@ FDI_DASI/
 
 ## ⚙️ Funcionamiento
 
-1. El agente se registra en Butler
+1. El agente se registra en Butler (activa)
 2. Obtiene estado del juego (recursos + objetivo)
 3. Recibe mensajes de otros agentes
 4. Usa IA (Ollama) para decidir
