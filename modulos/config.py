@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     OLLAMA_URL: str = "http://localhost:11434/api/chat"
     DEFAULT_MODEL: str = "ministral-3:8B"
 
-    MI_ALIAS: str = "ANGEL"
+    MI_ALIAS: str = "FH"
     MI_PUERTO: int = 7720
 
     SLEEP_TIME: int = 30
